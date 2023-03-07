@@ -1,0 +1,45 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "name": "@tus/file-store",
+    "version": "1.0.0-beta.1",
+    "description": "Local file storage for @tus/server",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "homepage": "https://github.com/tus/tus-node-server#readme",
+    "bugs": "https://github.com/tus/tus-node-server/issues",
+    "repository": "tus/tus-node-server",
+    "files": [
+        "README.md",
+        "LICENSE",
+        "dist"
+    ],
+    "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint .",
+        "format": "eslint --fix .",
+        "test": "mocha test.ts --exit --extension ts --require ts-node/register"
+    },
+    "dependencies": {
+        "configstore": "^5.0.1",
+        "debug": "^4.3.3"
+    },
+    "devDependencies": {
+        "@tus/server": "workspace:^",
+        "@types/configstore": "^6.0.0",
+        "@types/debug": "^4.1.7",
+        "@types/mocha": "^10.0.1",
+        "@types/node": "latest",
+        "eslint": "^8.29.0",
+        "eslint-config-custom": "workspace:*",
+        "mocha": "^10.1.0",
+        "should": "^13.2.3",
+        "typescript": "latest"
+    },
+    "peerDependencies": {
+        "@tus/server": "workspace:^"
+    },
+    "engines": {
+        "node": ">=16"
+    }
+}
