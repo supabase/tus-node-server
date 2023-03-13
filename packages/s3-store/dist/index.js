@@ -256,7 +256,9 @@ class S3Store extends server_1.DataStore {
                     reject(error);
                 }
                 finally {
-                    node_fs_1.promises.rm(path).catch( /* ignore */);
+                    node_fs_1.promises.rm(path).catch(() => {
+                        /* ignore */
+                    });
                 }
             });
             promises.push(deferred);
