@@ -41,15 +41,6 @@ export class PostHandler extends BaseHandler {
     const upload_defer_length = req.headers['upload-defer-length'] as string | undefined
     const upload_metadata = req.headers['upload-metadata'] as string | undefined
 
-    const maxFileSize = this.options.maxFileSize ? this.options.maxFileSize(req) : Number.MAX_VALUE
-
-    if (
-      content_length !== undefined &&
-      maxFileSize < parseInt(content_length, 10)
-    ) {
-      throw ERRORS.FILE_TOO_BIG
-    }
-
     if (
       upload_defer_length !== undefined && // Throw error if extension is not supported
       !this.store.hasExtension('creation-defer-length')
@@ -75,6 +66,23 @@ export class PostHandler extends BaseHandler {
         metadata = Metadata.parse(upload_metadata)
       } catch {
         throw ERRORS.INVALID_METADATA
+      }
+    }
+
+    const maxFileSize = this.options.maxFileSize ? await this.options.maxFileSize(id, req) : Number.MAX_VALUE
+
+    if (
+      content_length !== undefined &&
+      maxFileSize < parseInt(content_length, 10)
+    ) {
+      throw ERRORS.FILE_TOO_BIG
+    }
+
+    if (upload_defer_length === undefined && upload_length) {
+      if (
+        maxFileSize < parseInt(upload_length, 10)
+      ) {
+        throw ERRORS.FILE_TOO_BIG
       }
     }
 

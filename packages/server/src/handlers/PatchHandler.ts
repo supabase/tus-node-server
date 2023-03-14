@@ -13,11 +13,12 @@ export class PatchHandler extends BaseHandler {
    */
   async send(req: http.IncomingMessage, res: http.ServerResponse) {
     const id = this.getFileIdFromRequest(req)
-    const maxFileSize = this.options.maxFileSize ? await this.options.maxFileSize(req) : Number.MAX_VALUE
 
     if (id === false) {
       throw ERRORS.FILE_NOT_FOUND
     }
+
+    const maxFileSize = this.options.maxFileSize ? await this.options.maxFileSize(id, req) : Number.MAX_VALUE
 
     // The request MUST include a Upload-Offset header
     if (req.headers['upload-offset'] === undefined) {

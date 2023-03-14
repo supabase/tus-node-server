@@ -3,8 +3,8 @@
   "name": "@tus/server",
   "version": "1.0.0-beta.5",
   "description": "Tus resumable upload protocol in Node.js",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "homepage": "https://github.com/tus/tus-node-server#readme",
   "bugs": "https://github.com/tus/tus-node-server/issues",
   "repository": "tus/tus-node-server",
@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && cp package.dist.json dist/package.json",
+    "build": "tsc",
     "lint": "eslint .",
     "format": "eslint --fix .",
     "test": "mocha --timeout 40000 --exit --extension ts --require ts-node/register"
@@ -30,7 +30,6 @@
     "@types/sinon": "^10.0.13",
     "@types/supertest": "^2.0.12",
     "eslint": "^8.29.0",
-    "eslint-config-custom": "workspace:*",
     "mocha": "^10.1.0",
     "node-mocks-http": "^1.12.1",
     "should": "^13.2.3",

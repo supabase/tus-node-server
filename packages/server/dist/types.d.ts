@@ -12,6 +12,6 @@ export type ServerOptions = {
      * Determine the max file size for file uploads
      * @param req
      */
-    maxFileSize?: (req: http.IncomingMessage) => number | Promise<number>;
+    maxFileSize?: (id: string, req: http.IncomingMessage) => number | Promise<number>;
 };
 export type RouteHandler = (req: http.IncomingMessage, res: http.ServerResponse) => void;

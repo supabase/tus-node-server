@@ -31,11 +31,6 @@ class PostHandler extends BaseHandler_1.BaseHandler {
         const upload_length = req.headers['upload-length'];
         const upload_defer_length = req.headers['upload-defer-length'];
         const upload_metadata = req.headers['upload-metadata'];
-        const maxFileSize = this.options.maxFileSize ? this.options.maxFileSize(req) : Number.MAX_VALUE;
-        if (content_length !== undefined &&
-            maxFileSize < parseInt(content_length, 10)) {
-            throw constants_1.ERRORS.FILE_TOO_BIG;
-        }
         if (upload_defer_length !== undefined && // Throw error if extension is not supported
             !this.store.hasExtension('creation-defer-length')) {
             throw constants_1.ERRORS.UNSUPPORTED_CREATION_DEFER_LENGTH_EXTENSION;
@@ -58,6 +53,16 @@ class PostHandler extends BaseHandler_1.BaseHandler {
             }
             catch {
                 throw constants_1.ERRORS.INVALID_METADATA;
+            }
+        }
+        const maxFileSize = this.options.maxFileSize ? await this.options.maxFileSize(id, req) : Number.MAX_VALUE;
+        if (content_length !== undefined &&
+            maxFileSize < parseInt(content_length, 10)) {
+            throw constants_1.ERRORS.FILE_TOO_BIG;
+        }
+        if (upload_defer_length === undefined && upload_length) {
+            if (maxFileSize < parseInt(upload_length, 10)) {
+                throw constants_1.ERRORS.FILE_TOO_BIG;
             }
         }
         const upload = new models_1.Upload({
