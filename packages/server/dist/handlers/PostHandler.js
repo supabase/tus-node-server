@@ -27,9 +27,15 @@ class PostHandler extends BaseHandler_1.BaseHandler {
         if ('upload-concat' in req.headers && !this.store.hasExtension('concatentation')) {
             throw constants_1.ERRORS.UNSUPPORTED_CONCATENATION_EXTENSION;
         }
+        const content_length = req.headers['content-length'];
         const upload_length = req.headers['upload-length'];
         const upload_defer_length = req.headers['upload-defer-length'];
         const upload_metadata = req.headers['upload-metadata'];
+        const maxFileSize = this.options.maxFileSize ? this.options.maxFileSize(req) : Number.MAX_VALUE;
+        if (content_length !== undefined &&
+            maxFileSize < parseInt(content_length, 10)) {
+            throw constants_1.ERRORS.FILE_TOO_BIG;
+        }
         if (upload_defer_length !== undefined && // Throw error if extension is not supported
             !this.store.hasExtension('creation-defer-length')) {
             throw constants_1.ERRORS.UNSUPPORTED_CREATION_DEFER_LENGTH_EXTENSION;
@@ -81,6 +87,10 @@ class PostHandler extends BaseHandler_1.BaseHandler {
             headers['Upload-Offset'] = newOffset.toString();
             isFinal = newOffset === Number.parseInt(upload_length, 10);
             upload.offset = newOffset;
+            if (maxFileSize < newOffset) {
+                await this.store.remove(upload.id);
+                throw constants_1.ERRORS.FILE_TOO_BIG;
+            }
             if (isFinal && this.options.onUploadFinish) {
                 try {
                     res = await this.options.onUploadFinish(req, res, upload);

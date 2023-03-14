@@ -36,9 +36,19 @@ export class PostHandler extends BaseHandler {
       throw ERRORS.UNSUPPORTED_CONCATENATION_EXTENSION
     }
 
+    const content_length = req.headers['content-length'] as string | undefined
     const upload_length = req.headers['upload-length'] as string | undefined
     const upload_defer_length = req.headers['upload-defer-length'] as string | undefined
     const upload_metadata = req.headers['upload-metadata'] as string | undefined
+
+    const maxFileSize = this.options.maxFileSize ? this.options.maxFileSize(req) : Number.MAX_VALUE
+
+    if (
+      content_length !== undefined &&
+      maxFileSize < parseInt(content_length, 10)
+    ) {
+      throw ERRORS.FILE_TOO_BIG
+    }
 
     if (
       upload_defer_length !== undefined && // Throw error if extension is not supported
@@ -102,6 +112,11 @@ export class PostHandler extends BaseHandler {
       headers['Upload-Offset'] = newOffset.toString()
       isFinal = newOffset === Number.parseInt(upload_length as string, 10)
       upload.offset = newOffset
+
+      if (maxFileSize < newOffset) {
+        await this.store.remove(upload.id)
+        throw ERRORS.FILE_TOO_BIG
+      }
 
       if (isFinal && this.options.onUploadFinish) {
         try {

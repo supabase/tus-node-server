@@ -65,6 +65,10 @@ export const ERRORS = {
     status_code: 500,
     body: 'Something went wrong receiving the file\n',
   },
+  FILE_TOO_BIG: {
+    status_code: 413,
+    body: 'Request Entity Too Large\n',
+  },
   UNSUPPORTED_CONCATENATION_EXTENSION: {
     status_code: 501,
     body: 'Concatenation extension is not (yet) supported. Disable parallel uploads in the tus client.\n',

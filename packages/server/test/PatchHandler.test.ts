@@ -12,6 +12,7 @@ import {EVENTS} from '../src/constants'
 
 describe('PatchHandler', () => {
   const path = '/test/output'
+  let maxFileSize: PatchHandler['options']['maxFileSize']
   let req: http.IncomingMessage
   let res: httpMocks.MockResponse<http.ServerResponse>
   let store: sinon.SinonStubbedInstance<DataStore>
@@ -19,7 +20,7 @@ describe('PatchHandler', () => {
 
   beforeEach(() => {
     store = sinon.createStubInstance(DataStore)
-    handler = new PatchHandler(store, {path})
+    handler = new PatchHandler(store, {path, maxFileSize})
     req = {method: 'PATCH', url: `${path}/1234`} as http.IncomingMessage
     res = httpMocks.createResponse({req})
   })
@@ -32,6 +33,15 @@ describe('PatchHandler', () => {
   it('should 403 if no Upload-Offset header', () => {
     req.headers = {'content-type': 'application/offset+octet-stream'}
     return assert.rejects(() => handler.send(req, res), {status_code: 403})
+  })
+
+  it('should 413 if the content-length exceed the maxmimum file size', () => {
+    maxFileSize = () => 10
+    req.headers = {'content-length': '4020', 'content-type': 'application/offset+octet-stream', 'upload-offset': '0' }
+    store.getUpload.resolves(new Upload({id: '1234', offset: 0, size: 1024}))
+    store.write.resolves(200)
+    handler = new PatchHandler(store, {path, maxFileSize})
+    return assert.rejects(() => handler.send(req, res), {status_code: 413})
   })
 
   it('should call onUploadFinished hook', async function () {

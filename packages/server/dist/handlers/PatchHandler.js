@@ -14,6 +14,7 @@ class PatchHandler extends BaseHandler_1.BaseHandler {
      */
     async send(req, res) {
         const id = this.getFileIdFromRequest(req);
+        const maxFileSize = this.options.maxFileSize ? await this.options.maxFileSize(req) : Number.MAX_VALUE;
         if (id === false) {
             throw constants_1.ERRORS.FILE_NOT_FOUND;
         }
@@ -22,6 +23,9 @@ class PatchHandler extends BaseHandler_1.BaseHandler {
             throw constants_1.ERRORS.MISSING_OFFSET;
         }
         const offset = Number.parseInt(req.headers['upload-offset'], 10);
+        if (offset > maxFileSize) {
+            throw constants_1.ERRORS.FILE_TOO_BIG;
+        }
         // The request MUST include a Content-Type header
         const content_type = req.headers['content-type'];
         if (content_type === undefined) {
@@ -64,6 +68,10 @@ class PatchHandler extends BaseHandler_1.BaseHandler {
             upload.size = size;
         }
         const newOffset = await this.store.write(req, id, offset);
+        if (upload.size && (maxFileSize - newOffset) < 0) {
+            await this.store.remove(id);
+            throw constants_1.ERRORS.FILE_TOO_BIG;
+        }
         upload.offset = newOffset;
         this.emit(constants_1.EVENTS.POST_RECEIVE, req, res, upload);
         if (newOffset === upload.size && this.options.onUploadFinish) {

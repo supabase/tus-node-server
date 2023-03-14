@@ -41,6 +41,10 @@ export declare const ERRORS: {
         readonly status_code: 500;
         readonly body: "Something went wrong receiving the file\n";
     };
+    readonly FILE_TOO_BIG: {
+        readonly status_code: 413;
+        readonly body: "Request Entity Too Large\n";
+    };
     readonly UNSUPPORTED_CONCATENATION_EXTENSION: {
         readonly status_code: 501;
         readonly body: "Concatenation extension is not (yet) supported. Disable parallel uploads in the tus client.\n";

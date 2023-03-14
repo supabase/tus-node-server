@@ -242,12 +242,14 @@ class S3Store extends server_1.DataStore {
                             this.deleteIncompletePart(incompletePartId),
                         ]);
                     }
+                    const readable = node_fs_1.default.createReadStream(path);
+                    readable.on('error', reject);
                     if (partSize > this.minPartSize || isFinalChunk) {
-                        await this.uploadPart(metadata, node_fs_1.default.createReadStream(path), partNumber);
+                        await this.uploadPart(metadata, readable, partNumber);
                         offset += partSize;
                     }
                     else {
-                        await this.uploadIncompletePart(incompletePartId, node_fs_1.default.createReadStream(path));
+                        await this.uploadIncompletePart(incompletePartId, readable);
                     }
                     bytesUploaded += partSize;
                     resolve();
