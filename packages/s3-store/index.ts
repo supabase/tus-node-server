@@ -24,6 +24,7 @@ type Options = {
   partSize?: number
   // Options to pass to the AWS S3 SDK.
   s3ClientConfig: aws.S3.Types.ClientConfiguration & {bucket: string}
+  expirationPeriodInMilliseconds?: number
 }
 
 type MetadataValue = {file: Upload; upload_id: string; tus_version: string}
@@ -67,6 +68,7 @@ export class S3Store extends DataStore {
   private preferredPartSize: number
   public maxMultipartParts = 10_000 as const
   public minPartSize = 5_242_880 as const // 5MB
+  private expirationPeriodInMilliseconds = 0
 
   constructor(options: Options) {
     super()
@@ -77,10 +79,12 @@ export class S3Store extends DataStore {
       'creation-with-upload',
       'creation-defer-length',
       'termination',
+      'expiration'
     ]
     this.bucket = bucket
     this.preferredPartSize = partSize || 8 * 1024 * 1024
     this.client = new aws.S3(restS3ClientConfig)
+    this.expirationPeriodInMilliseconds = options.expirationPeriodInMilliseconds ?? 0
   }
 
   /**
@@ -411,6 +415,7 @@ export class S3Store extends DataStore {
       id: upload.id,
       offset: upload.offset,
       metadata: upload.metadata,
+      creation_date: upload.creation_date ??  new Date().toISOString(),
     }
 
     if (upload.size) {
@@ -557,5 +562,9 @@ export class S3Store extends DataStore {
       .promise()
 
     this.clearCache(id)
+  }
+
+  getExpiration(): number {
+    return this.expirationPeriodInMilliseconds
   }
 }
