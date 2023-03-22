@@ -1,6 +1,6 @@
 export declare const REQUEST_METHODS: readonly ["POST", "HEAD", "PATCH", "OPTIONS", "DELETE"];
-export declare const HEADERS: readonly ["Authorization", "Content-Type", "Location", "Tus-Extension", "Tus-Max-Size", "Tus-Resumable", "Tus-Version", "Upload-Concat", "Upload-Defer-Length", "Upload-Length", "Upload-Metadata", "Upload-Offset", "X-HTTP-Method-Override", "X-Requested-With", "X-Forwarded-Host", "X-Forwarded-Proto", "Forwarded"];
-export declare const HEADERS_LOWERCASE: ("authorization" | "content-type" | "location" | "tus-extension" | "tus-max-size" | "tus-resumable" | "tus-version" | "upload-concat" | "upload-defer-length" | "upload-length" | "upload-metadata" | "upload-offset" | "x-http-method-override" | "x-requested-with" | "x-forwarded-host" | "x-forwarded-proto" | "forwarded")[];
+export declare const HEADERS: readonly ["Authorization", "Content-Type", "Location", "Tus-Extension", "Tus-Max-Size", "Tus-Resumable", "Tus-Version", "Upload-Concat", "Upload-Defer-Length", "Upload-Length", "Upload-Metadata", "Upload-Offset", "X-HTTP-Method-Override", "X-Requested-With", "X-Forwarded-Host", "X-Forwarded-Proto", "Forwarded", "Upload-Expires"];
+export declare const HEADERS_LOWERCASE: ("authorization" | "content-type" | "location" | "tus-extension" | "tus-max-size" | "tus-resumable" | "tus-version" | "upload-concat" | "upload-defer-length" | "upload-length" | "upload-metadata" | "upload-offset" | "x-http-method-override" | "x-requested-with" | "x-forwarded-host" | "x-forwarded-proto" | "forwarded" | "upload-expires")[];
 export declare const ALLOWED_HEADERS: string;
 export declare const ALLOWED_METHODS: string;
 export declare const EXPOSED_HEADERS: string;

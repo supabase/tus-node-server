@@ -75,9 +75,9 @@ function calcOffsetFromParts(parts) {
 class S3Store extends server_1.DataStore {
     constructor(options) {
         super();
-        this.cache = new Map();
         this.maxMultipartParts = 10000;
         this.minPartSize = 5242880; // 5MB
+        this.expirationPeriodInMilliseconds = 0;
         const { partSize, s3ClientConfig } = options;
         const { bucket, ...restS3ClientConfig } = s3ClientConfig;
         this.extensions = [
@@ -85,10 +85,13 @@ class S3Store extends server_1.DataStore {
             'creation-with-upload',
             'creation-defer-length',
             'termination',
+            'expiration'
         ];
         this.bucket = bucket;
         this.preferredPartSize = partSize || 8 * 1024 * 1024;
-        this.client = new aws_sdk_1.default.S3(restS3ClientConfig);
+        this.client = options.client ?? new aws_sdk_1.default.S3(restS3ClientConfig);
+        this.expirationPeriodInMilliseconds = options.expirationPeriodInMilliseconds ?? 0;
+        this.cache = options.cache ?? new Map();
     }
     /**
      * Saves upload metadata to a `${file_id}.info` file on S3.
@@ -374,6 +377,7 @@ class S3Store extends server_1.DataStore {
             id: upload.id,
             offset: upload.offset,
             metadata: upload.metadata,
+            creation_date: upload.creation_date ?? new Date().toISOString(),
         };
         if (upload.size) {
             file.size = upload.size.toString();
@@ -384,6 +388,9 @@ class S3Store extends server_1.DataStore {
         }
         if (upload.metadata?.contentType) {
             request.ContentType = upload.metadata.contentType;
+        }
+        if (upload.metadata?.cacheControl) {
+            request.CacheControl = upload.metadata.cacheControl;
         }
         // TODO: rename `file` to `upload` to align with the codebase
         request.Metadata.file = JSON.stringify(file);
@@ -479,7 +486,7 @@ class S3Store extends server_1.DataStore {
             }
         }
         catch (error) {
-            if (error?.code && ['NoSuchKey', 'NoSuchUpload'].includes(error.code)) {
+            if (error?.code && ['NotFound', 'NoSuchKey', 'NoSuchUpload'].includes(error.code)) {
                 log('remove: No file found.', error);
                 throw server_2.ERRORS.FILE_NOT_FOUND;
             }
@@ -494,6 +501,9 @@ class S3Store extends server_1.DataStore {
         })
             .promise();
         this.clearCache(id);
+    }
+    getExpiration() {
+        return this.expirationPeriodInMilliseconds;
     }
 }
 exports.S3Store = S3Store;

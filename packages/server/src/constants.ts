@@ -18,6 +18,7 @@ export const HEADERS = [
   'X-Forwarded-Host',
   'X-Forwarded-Proto',
   'Forwarded',
+  'Upload-Expires'
 ] as const
 
 export const HEADERS_LOWERCASE = HEADERS.map((header) => {

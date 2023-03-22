@@ -24,6 +24,9 @@ type Options = {
   partSize?: number
   // Options to pass to the AWS S3 SDK.
   s3ClientConfig: aws.S3.Types.ClientConfiguration & {bucket: string}
+  expirationPeriodInMilliseconds?: number
+  client?: aws.S3
+  cache?: Map<string, MetadataValue>
 }
 
 type MetadataValue = {file: Upload; upload_id: string; tus_version: string}
@@ -61,12 +64,13 @@ type MetadataValue = {file: Upload; upload_id: string; tus_version: string}
 // For each incoming PATCH request (a call to `write`), a new part is uploaded
 // to S3.
 export class S3Store extends DataStore {
-  private bucket: string
-  private cache: Map<string, MetadataValue> = new Map()
-  private client: aws.S3
+  protected bucket: string
+  protected cache: Map<string, MetadataValue>
+  protected client: aws.S3
   private preferredPartSize: number
   public maxMultipartParts = 10_000 as const
   public minPartSize = 5_242_880 as const // 5MB
+  private expirationPeriodInMilliseconds = 0
 
   constructor(options: Options) {
     super()
@@ -77,10 +81,13 @@ export class S3Store extends DataStore {
       'creation-with-upload',
       'creation-defer-length',
       'termination',
+      'expiration'
     ]
     this.bucket = bucket
     this.preferredPartSize = partSize || 8 * 1024 * 1024
-    this.client = new aws.S3(restS3ClientConfig)
+    this.client = options.client ?? new aws.S3(restS3ClientConfig)
+    this.expirationPeriodInMilliseconds = options.expirationPeriodInMilliseconds ?? 0
+    this.cache = options.cache ?? new Map()
   }
 
   /**
@@ -89,8 +96,9 @@ export class S3Store extends DataStore {
    * on the S3 object's `Metadata` field, so that only a `headObject`
    * is necessary to retrieve the data.
    */
-  private async saveMetadata(upload: Upload, upload_id: string) {
+  protected async saveMetadata(upload: Upload, upload_id: string) {
     log(`[${upload.id}] saving metadata`)
+
     await this.client
       .putObject({
         Bucket: this.bucket,
@@ -111,7 +119,7 @@ export class S3Store extends DataStore {
    * There's a small and simple caching mechanism to avoid multiple
    * HTTP calls to S3.
    */
-  private async getMetadata(id: string): Promise<MetadataValue> {
+  protected async getMetadata(id: string): Promise<MetadataValue> {
     log(`[${id}] retrieving metadata`)
     const cached = this.cache.get(id)
     if (cached?.file) {
@@ -151,7 +159,7 @@ export class S3Store extends DataStore {
     return id
   }
 
-  private async uploadPart(
+  protected async uploadPart(
     metadata: MetadataValue,
     readStream: fs.ReadStream | Readable,
     partNumber: number
@@ -169,7 +177,7 @@ export class S3Store extends DataStore {
     return data.ETag as string
   }
 
-  private async uploadIncompletePart(
+  protected async uploadIncompletePart(
     id: string,
     readStream: fs.ReadStream | Readable
   ): Promise<string> {
@@ -412,6 +420,7 @@ export class S3Store extends DataStore {
       id: upload.id,
       offset: upload.offset,
       metadata: upload.metadata,
+      creation_date: upload.creation_date ?? new Date().toISOString(),
     }
 
     if (upload.size) {
@@ -423,6 +432,10 @@ export class S3Store extends DataStore {
 
     if (upload.metadata?.contentType) {
       request.ContentType = upload.metadata.contentType
+    }
+
+    if (upload.metadata?.cacheControl) {
+      request.CacheControl = upload.metadata.cacheControl
     }
 
     // TODO: rename `file` to `upload` to align with the codebase
@@ -541,7 +554,7 @@ export class S3Store extends DataStore {
           .promise()
       }
     } catch (error) {
-      if (error?.code && ['NoSuchKey', 'NoSuchUpload'].includes(error.code)) {
+      if (error?.code && ['NotFound', 'NoSuchKey', 'NoSuchUpload'].includes(error.code)) {
         log('remove: No file found.', error)
         throw ERRORS.FILE_NOT_FOUND
       }
@@ -558,5 +571,9 @@ export class S3Store extends DataStore {
       .promise()
 
     this.clearCache(id)
+  }
+
+  getExpiration(): number {
+    return this.expirationPeriodInMilliseconds
   }
 }
