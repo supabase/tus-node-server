@@ -150,7 +150,13 @@ export class Server extends EventEmitter {
     const onError = (error: {status_code?: number; body?: string; message: string}) => {
       const status_code = error.status_code || ERRORS.UNKNOWN_ERROR.status_code
       const body = error.body || `${ERRORS.UNKNOWN_ERROR.body}${error.message || ''}\n`
-      return this.write(res, status_code, body)
+      const writtenResp = this.write(res, status_code, body)
+
+      // maxFile Exceeded
+      if (error.status_code === 413) {
+        req.destroy()
+      }
+      return writtenResp
     }
 
     try {
