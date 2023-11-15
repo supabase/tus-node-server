@@ -30,6 +30,10 @@ export class PatchHandler extends BaseHandler {
       throw ERRORS.INVALID_CONTENT_TYPE
     }
 
+    if (this.options.onIncomingRequest) {
+      await this.options.onIncomingRequest(req, res, id)
+    }
+
     const upload = await this.lock(req, id, () => {
       return this.store.getUpload(id)
     })

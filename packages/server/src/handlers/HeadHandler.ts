@@ -12,6 +12,10 @@ export class HeadHandler extends BaseHandler {
       throw ERRORS.FILE_NOT_FOUND
     }
 
+    if (this.options.onIncomingRequest) {
+      await this.options.onIncomingRequest(req, res, id)
+    }
+
     const file = await this.lock(req, id, () => {
       return this.store.getUpload(id)
     })
