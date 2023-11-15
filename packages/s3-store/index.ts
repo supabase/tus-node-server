@@ -22,6 +22,7 @@ type Options = {
   // The server calculates the optimal part size, which takes this size into account,
   // but may increase it to not exceed the S3 10K parts limit.
   partSize?: number
+  expirationPeriodInMilliseconds?: number
   // Options to pass to the AWS S3 SDK.
   s3ClientConfig: S3ClientConfig & {bucket: string}
 }
@@ -30,6 +31,7 @@ type MetadataValue = {
   file: Upload
   'upload-id': string
   'tus-version': string
+  'created-at': string
 }
 // Implementation (based on https://github.com/tus/tusd/blob/master/s3store/s3store.go)
 //
@@ -69,6 +71,7 @@ export class S3Store extends DataStore {
   private cache: Map<string, MetadataValue> = new Map()
   private client: S3
   private preferredPartSize: number
+  private expirationPeriodInMilliseconds = 0
   public maxMultipartParts = 10_000 as const
   public minPartSize = 5_242_880 as const // 5MiB
   public maxUploadSize = 5_497_558_138_880 as const // 5TiB
@@ -82,9 +85,11 @@ export class S3Store extends DataStore {
       'creation-with-upload',
       'creation-defer-length',
       'termination',
+      'expiration',
     ]
     this.bucket = bucket
     this.preferredPartSize = partSize || 8 * 1024 * 1024
+    this.expirationPeriodInMilliseconds = options.expirationPeriodInMilliseconds ?? 0
     this.client = new S3(restS3ClientConfig)
   }
 
@@ -103,6 +108,7 @@ export class S3Store extends DataStore {
       Metadata: {
         'upload-id': uploadId,
         'tus-version': TUS_RESUMABLE,
+        'created-at': upload.creation_date || new Date().toISOString(),
       },
     })
     log(`[${upload.id}] metadata file saved`)
@@ -127,11 +133,13 @@ export class S3Store extends DataStore {
     this.cache.set(id, {
       'tus-version': Metadata?.['tus-version'] as string,
       'upload-id': Metadata?.['upload-id'] as string,
+      'created-at': Metadata?.['created-at'] as string,
       file: new Upload({
         id,
         size: file.size ? Number.parseInt(file.size, 10) : undefined,
         offset: Number.parseInt(file.offset, 10),
         metadata: file.metadata,
+        creation_date: Metadata?.['created-at'] as string,
       }),
     })
     return this.cache.get(id) as MetadataValue
@@ -167,12 +175,14 @@ export class S3Store extends DataStore {
 
   private async uploadIncompletePart(
     id: string,
-    readStream: fs.ReadStream | Readable
+    readStream: fs.ReadStream | Readable,
+    expires?: Date
   ): Promise<string> {
     const data = await this.client.putObject({
       Bucket: this.bucket,
       Key: this.partKey(id, true),
       Body: readStream,
+      Expires: expires,
     })
     log(`[${id}] finished uploading incomplete part`)
     return data.ETag as string
@@ -314,7 +324,12 @@ export class S3Store extends DataStore {
             if (partSize + incompletePartSize >= this.minPartSize || isFinalPart) {
               await this.uploadPart(metadata, readable, partNumber)
             } else {
-              await this.uploadIncompletePart(metadata.file.id, readable)
+              const expirationDate =
+                this.getExpiration() > 0 && metadata.file.creation_date
+                  ? this.getExpirationDate(metadata.file.creation_date)
+                  : undefined
+
+              await this.uploadIncompletePart(metadata.file.id, readable, expirationDate)
             }
 
             bytesUploaded += partSize
@@ -558,7 +573,7 @@ export class S3Store extends DataStore {
 
     file.size = upload_length
 
-    this.saveMetadata(file, uploadId)
+    await this.saveMetadata(file, uploadId)
   }
 
   public async remove(id: string): Promise<void> {
@@ -587,5 +602,15 @@ export class S3Store extends DataStore {
     })
 
     this.clearCache(id)
+  }
+
+  protected getExpirationDate(created_at: string) {
+    const date = new Date(created_at)
+
+    return new Date(date.getTime() + this.getExpiration())
+  }
+
+  getExpiration(): number {
+    return this.expirationPeriodInMilliseconds
   }
 }
