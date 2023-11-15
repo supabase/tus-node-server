@@ -10,7 +10,10 @@ export class DeleteHandler extends BaseHandler {
       throw ERRORS.FILE_NOT_FOUND
     }
 
-    await this.store.remove(id)
+    await this.lock(req, id, () => {
+      return this.store.remove(id)
+    })
+
     const writtenRes = this.write(res, 204, {})
     this.emit(EVENTS.POST_TERMINATE, req, writtenRes, id)
     return writtenRes

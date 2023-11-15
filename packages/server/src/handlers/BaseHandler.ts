@@ -44,4 +44,22 @@ export class BaseHandler extends EventEmitter {
   getFileIdFromRequest(req: http.IncomingMessage) {
     return this.uploadIdGenerator.getFileIdFromRequest(req)
   }
+
+  getLocker(req: http.IncomingMessage) {
+    if (typeof this.options.locker === 'function') {
+      return this.options.locker(req)
+    }
+    return this.options.locker
+  }
+
+  async lock<T>(req: http.IncomingMessage, id: string, fn: () => Promise<T>) {
+    const locker = this.getLocker(req)
+
+    try {
+      await locker?.lock(id)
+      return await fn()
+    } finally {
+      await locker?.unlock(id)
+    }
+  }
 }
