@@ -34,7 +34,9 @@ export class PatchHandler extends BaseHandler {
       await this.options.onIncomingRequest(req, res, id)
     }
 
-    const upload = await this.store.getUpload(id)
+    const upload = await this.lock(req, id, () => {
+      return this.store.getUpload(id)
+    })
 
     // If a Client does attempt to resume an upload which has since
     // been removed by the Server, the Server SHOULD respond with the
@@ -81,7 +83,10 @@ export class PatchHandler extends BaseHandler {
       upload.size = size
     }
 
-    const newOffset = await this.store.write(req, id, offset)
+    const newOffset = await this.lock(req, id, () => {
+      return this.store.write(req, id, offset)
+    })
+
     upload.offset = newOffset
     this.emit(EVENTS.POST_RECEIVE, req, res, upload)
     if (newOffset === upload.size && this.options.onUploadFinish) {
