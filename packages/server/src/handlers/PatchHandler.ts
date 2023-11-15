@@ -32,7 +32,13 @@ export class PatchHandler extends BaseHandler {
       throw ERRORS.INVALID_CONTENT_TYPE
     }
 
-    const upload = await this.store.getUpload(id)
+    if (this.options.onIncomingRequest) {
+      await this.options.onIncomingRequest(req, res, id)
+    }
+
+    const upload = await this.lock(req, id, () => {
+      return this.store.getUpload(id)
+    })
 
     // If a Client does attempt to resume an upload which has since
     // been removed by the Server, the Server SHOULD respond with the
@@ -88,7 +94,10 @@ export class PatchHandler extends BaseHandler {
     const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize)
     const reqBody = stream.pipeline(req, new StreamLimiter(bodyMaxSize), () => {})
 
-    const newOffset = await this.store.write(reqBody, id, offset)
+    const newOffset = await this.lock(req, id, () => {
+      return this.store.write(reqBody, id, offset)
+    })
+
     upload.offset = newOffset
     this.emit(EVENTS.POST_RECEIVE, req, res, upload)
     if (newOffset === upload.size && this.options.onUploadFinish) {

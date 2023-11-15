@@ -12,7 +12,13 @@ export class HeadHandler extends BaseHandler {
       throw ERRORS.FILE_NOT_FOUND
     }
 
-    const file = await this.store.getUpload(id)
+    if (this.options.onIncomingRequest) {
+      await this.options.onIncomingRequest(req, res, id)
+    }
+
+    const file = await this.lock(req, id, () => {
+      return this.store.getUpload(id)
+    })
 
     // If a Client does attempt to resume an upload which has since
     // been removed by the Server, the Server SHOULD respond with the

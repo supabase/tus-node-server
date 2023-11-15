@@ -70,6 +70,10 @@ export class PostHandler extends BaseHandler {
       }
     }
 
+    if (this.options.onIncomingRequest) {
+      await this.options.onIncomingRequest(req, res, id)
+    }
+
     const upload = new Upload({
       id,
       size: upload_length ? Number.parseInt(upload_length, 10) : undefined,
@@ -96,7 +100,6 @@ export class PostHandler extends BaseHandler {
 
     this.emit(EVENTS.POST_CREATE, req, res, upload, url)
 
-    let newOffset
     let isFinal = upload.size === 0 && !upload.sizeIsDeferred
     const headers: {
       'Upload-Offset'?: string
@@ -108,7 +111,10 @@ export class PostHandler extends BaseHandler {
       const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize)
       const reqBody = stream.pipeline(req, new StreamLimiter(bodyMaxSize), () => {})
 
-      newOffset = await this.store.write(reqBody, upload.id, 0)
+      const newOffset = await this.lock(req, id, async () => {
+        return this.store.write(reqBody, upload.id, 0)
+      })
+
       headers['Upload-Offset'] = newOffset.toString()
       isFinal = newOffset === Number.parseInt(upload_length as string, 10)
       upload.offset = newOffset
@@ -129,7 +135,10 @@ export class PostHandler extends BaseHandler {
       this.store.getExpiration() > 0 &&
       upload.creation_date
     ) {
-      const created = await this.store.getUpload(upload.id)
+      const created = await this.lock(req, id, async () => {
+        return this.store.getUpload(upload.id)
+      })
+
       if (created.offset !== Number.parseInt(upload_length as string, 10)) {
         const creation = new Date(upload.creation_date)
         // Value MUST be in RFC 7231 datetime format
