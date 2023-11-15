@@ -1,6 +1,5 @@
 .idea
 .eslintcache
-dist
 
 # Yarn
 .pnp.*

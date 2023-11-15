@@ -3,8 +3,8 @@
   "name": "@tus/file-store",
   "version": "1.0.1",
   "description": "Local file storage for @tus/server",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "homepage": "https://github.com/tus/tus-node-server#readme",
   "bugs": "https://github.com/tus/tus-node-server/issues",
   "repository": "tus/tus-node-server",
@@ -15,7 +15,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsc && cp package.dist.json dist/package.json",
+    "build": "tsc && cp package.json dist/package.json",
     "lint": "eslint .",
     "format": "eslint --fix .",
     "test": "mocha test.ts --exit --extension ts --require ts-node/register"
@@ -25,18 +25,18 @@
     "p-queue": "^6.6.2"
   },
   "devDependencies": {
-    "@tus/server": "workspace:^",
+    "@tus/server": "https://gitpkg.now.sh/supabase/tus-node-server/packages/server/dist?supabase/build-v1",
     "@types/debug": "^4.1.8",
     "@types/mocha": "^10.0.1",
     "@types/node": "^20.5.7",
     "eslint": "^8.48.0",
-    "eslint-config-custom": "workspace:*",
+    "eslint-config-custom": "https://gitpkg.now.sh/supabase/tus-node-server/packages/eslint-config-custom?supabase/build-v1",
     "mocha": "^10.2.0",
     "should": "^13.2.3",
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@tus/server": "workspace:^"
+    "@tus/server": "https://gitpkg.now.sh/supabase/tus-node-server/packages/server/dist?supabase/build-v1"
   },
   "optionalDependencies": {
     "@redis/client": "^1.5.9"
