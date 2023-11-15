@@ -8,6 +8,8 @@ import {EVENTS, ERRORS} from '../constants'
 import type http from 'node:http'
 import type {ServerOptions} from '../types'
 import type {DataStore} from '../models'
+import stream from 'node:stream'
+import {StreamLimiter} from '../models/StreamLimiter'
 
 const log = debug('tus-node-server:handlers:post')
 
@@ -79,6 +81,11 @@ export class PostHandler extends BaseHandler {
       metadata,
     })
 
+    const maxFileSize = await this.getConfiguredMaxSize(req, id)
+    if (maxFileSize > 0 && (upload.size || 0) > maxFileSize) {
+      throw ERRORS.ERR_MAX_SIZE_EXCEEDED
+    }
+
     if (this.options.onUploadCreate) {
       try {
         res = await this.options.onUploadCreate(req, res, upload)
@@ -101,8 +108,11 @@ export class PostHandler extends BaseHandler {
 
     // The request MIGHT include a Content-Type header when using creation-with-upload extension
     if (validateHeader('content-type', req.headers['content-type'])) {
+      const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize)
+      const reqBody = stream.pipeline(req, new StreamLimiter(bodyMaxSize), () => {})
+
       const newOffset = await this.lock(req, id, async () => {
-        return this.store.write(req, upload.id, 0)
+        return this.store.write(reqBody, upload.id, 0)
       })
 
       headers['Upload-Offset'] = newOffset.toString()
