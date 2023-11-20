@@ -79,9 +79,15 @@ class Server extends node_events_1.EventEmitter {
         if (req.headers['x-http-method-override']) {
             req.method = req.headers['x-http-method-override'].toUpperCase();
         }
-        const onError = (error) => {
+        const onError = async (error) => {
             const status_code = error.status_code || constants_1.ERRORS.UNKNOWN_ERROR.status_code;
             const body = error.body || `${constants_1.ERRORS.UNKNOWN_ERROR.body}${error.message || ''}\n`;
+            if (this.options.onResponseError) {
+                const write = ({ status_code, body }) => {
+                    return this.write(res, status_code, body);
+                };
+                return this.options.onResponseError(req, res, { status_code, body }, write);
+            }
             return this.write(res, status_code, body);
         };
         if (req.method === 'GET') {
@@ -133,6 +139,10 @@ class Server extends node_events_1.EventEmitter {
         if (status !== 204) {
             // @ts-expect-error not explicitly typed but possible
             headers['Content-Length'] = Buffer.byteLength(body, 'utf8');
+        }
+        if (status === 413) {
+            // @ts-expect-error not explicitly typed but possible
+            headers['Connection'] = 'close';
         }
         res.writeHead(status, headers);
         res.write(body);

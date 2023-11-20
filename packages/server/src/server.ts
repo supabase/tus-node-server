@@ -147,16 +147,21 @@ export class Server extends EventEmitter {
       req.method = (req.headers['x-http-method-override'] as string).toUpperCase()
     }
 
-    const onError = (error: {status_code?: number; body?: string; message: string}) => {
+    const onError = async (error: {
+      status_code?: number
+      body?: string
+      message: string
+    }) => {
       const status_code = error.status_code || ERRORS.UNKNOWN_ERROR.status_code
       const body = error.body || `${ERRORS.UNKNOWN_ERROR.body}${error.message || ''}\n`
-      const writtenResp = this.write(res, status_code, body)
 
-      // maxFile Exceeded
-      if (error.status_code === 413) {
-        req.destroy()
+      if (this.options.onResponseError) {
+        const write = ({status_code, body}: {status_code: number; body: string}) => {
+          return this.write(res, status_code, body)
+        }
+        return this.options.onResponseError(req, res, {status_code, body}, write)
       }
-      return writtenResp
+      return this.write(res, status_code, body)
     }
 
     if (req.method === 'GET') {
@@ -219,6 +224,12 @@ export class Server extends EventEmitter {
       // @ts-expect-error not explicitly typed but possible
       headers['Content-Length'] = Buffer.byteLength(body, 'utf8')
     }
+
+    if (status === 413) {
+      // @ts-expect-error not explicitly typed but possible
+      headers['Connection'] = 'close'
+    }
+
     res.writeHead(status, headers)
     res.write(body)
     return res.end()

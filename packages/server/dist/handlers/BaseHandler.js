@@ -46,8 +46,8 @@ class BaseHandler extends node_events_1.default {
     }
     async lock(req, id, fn) {
         const locker = this.getLocker(req);
+        await locker?.lock(id);
         try {
-            await locker?.lock(id);
             return await fn();
         }
         finally {

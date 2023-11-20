@@ -1,15 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StreamLimiter = void 0;
+exports.StreamLimiter = exports.MaxFileExceededError = void 0;
 const stream_1 = require("stream");
 const constants_1 = require("../constants");
 class MaxFileExceededError extends Error {
-    constructor(message) {
-        super(message);
+    constructor() {
+        super(constants_1.ERRORS.ERR_MAX_SIZE_EXCEEDED.body);
         this.status_code = constants_1.ERRORS.ERR_MAX_SIZE_EXCEEDED.status_code;
-        this.body = message;
+        this.body = constants_1.ERRORS.ERR_MAX_SIZE_EXCEEDED.body;
+        Object.setPrototypeOf(this, MaxFileExceededError.prototype);
     }
 }
+exports.MaxFileExceededError = MaxFileExceededError;
 class StreamLimiter extends stream_1.Transform {
     constructor(maxSize) {
         super();
@@ -19,7 +21,7 @@ class StreamLimiter extends stream_1.Transform {
     _transform(chunk, encoding, callback) {
         this.currentSize += chunk.length;
         if (this.currentSize > this.maxSize) {
-            callback(new MaxFileExceededError(constants_1.ERRORS.ERR_MAX_SIZE_EXCEEDED.body));
+            callback(new MaxFileExceededError());
         }
         else {
             this.push(chunk);

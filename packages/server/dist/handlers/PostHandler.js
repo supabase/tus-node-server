@@ -9,7 +9,7 @@ const BaseHandler_1 = require("./BaseHandler");
 const models_1 = require("../models");
 const HeaderValidator_1 = require("../validators/HeaderValidator");
 const constants_1 = require("../constants");
-const node_stream_1 = __importDefault(require("node:stream"));
+const promises_1 = __importDefault(require("node:stream/promises"));
 const StreamLimiter_1 = require("../models/StreamLimiter");
 const log = (0, debug_1.default)('tus-node-server:handlers:post');
 class PostHandler extends BaseHandler_1.BaseHandler {
@@ -81,14 +81,16 @@ class PostHandler extends BaseHandler_1.BaseHandler {
         await this.store.create(upload);
         const url = this.generateUrl(req, upload.id);
         this.emit(constants_1.EVENTS.POST_CREATE, req, res, upload, url);
+        let newOffset = 0;
         let isFinal = upload.size === 0 && !upload.sizeIsDeferred;
         const headers = {};
         // The request MIGHT include a Content-Type header when using creation-with-upload extension
         if ((0, HeaderValidator_1.validateHeader)('content-type', req.headers['content-type'])) {
             const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize);
-            const reqBody = node_stream_1.default.pipeline(req, new StreamLimiter_1.StreamLimiter(bodyMaxSize), () => { });
-            const newOffset = await this.lock(req, id, async () => {
-                return this.store.write(reqBody, upload.id, 0);
+            await promises_1.default.pipeline(req, new StreamLimiter_1.StreamLimiter(bodyMaxSize), async (stream) => {
+                newOffset = await this.lock(req, upload.id, () => {
+                    return this.store.write(stream, upload.id, 0);
+                });
             });
             headers['Upload-Offset'] = newOffset.toString();
             isFinal = newOffset === Number.parseInt(upload_length, 10);

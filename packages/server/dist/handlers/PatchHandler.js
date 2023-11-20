@@ -7,7 +7,7 @@ exports.PatchHandler = void 0;
 const debug_1 = __importDefault(require("debug"));
 const BaseHandler_1 = require("./BaseHandler");
 const constants_1 = require("../constants");
-const node_stream_1 = __importDefault(require("node:stream"));
+const promises_1 = __importDefault(require("node:stream/promises"));
 const StreamLimiter_1 = require("../models/StreamLimiter");
 const log = (0, debug_1.default)('tus-node-server:handlers:patch');
 class PatchHandler extends BaseHandler_1.BaseHandler {
@@ -74,10 +74,12 @@ class PatchHandler extends BaseHandler_1.BaseHandler {
             await this.store.declareUploadLength(id, size);
             upload.size = size;
         }
+        let newOffset = 0;
         const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize);
-        const reqBody = node_stream_1.default.pipeline(req, new StreamLimiter_1.StreamLimiter(bodyMaxSize), () => { });
-        const newOffset = await this.lock(req, id, () => {
-            return this.store.write(reqBody, id, offset);
+        await promises_1.default.pipeline(req, new StreamLimiter_1.StreamLimiter(bodyMaxSize), async (stream) => {
+            newOffset = await this.lock(req, id, () => {
+                return this.store.write(stream, id, offset);
+            });
         });
         upload.offset = newOffset;
         this.emit(constants_1.EVENTS.POST_RECEIVE, req, res, upload);
