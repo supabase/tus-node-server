@@ -8,7 +8,7 @@ import {EVENTS, ERRORS} from '../constants'
 import type http from 'node:http'
 import type {ServerOptions} from '../types'
 import type {DataStore} from '../models'
-import stream from 'node:stream'
+import stream from 'node:stream/promises'
 import {StreamLimiter} from '../models/StreamLimiter'
 
 const log = debug('tus-node-server:handlers:post')
@@ -100,6 +100,7 @@ export class PostHandler extends BaseHandler {
 
     this.emit(EVENTS.POST_CREATE, req, res, upload, url)
 
+    let newOffset = 0
     let isFinal = upload.size === 0 && !upload.sizeIsDeferred
     const headers: {
       'Upload-Offset'?: string
@@ -109,10 +110,10 @@ export class PostHandler extends BaseHandler {
     // The request MIGHT include a Content-Type header when using creation-with-upload extension
     if (validateHeader('content-type', req.headers['content-type'])) {
       const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize)
-      const reqBody = stream.pipeline(req, new StreamLimiter(bodyMaxSize), () => {})
-
-      const newOffset = await this.lock(req, id, async () => {
-        return this.store.write(reqBody, upload.id, 0)
+      await stream.pipeline(req, new StreamLimiter(bodyMaxSize), async (stream) => {
+        newOffset = await this.lock(req, upload.id, () => {
+          return this.store.write(stream as StreamLimiter, upload.id, 0)
+        })
       })
 
       headers['Upload-Offset'] = newOffset.toString()

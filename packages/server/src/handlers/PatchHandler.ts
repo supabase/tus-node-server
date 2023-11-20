@@ -4,7 +4,7 @@ import {BaseHandler} from './BaseHandler'
 import {ERRORS, EVENTS} from '../constants'
 
 import type http from 'node:http'
-import stream from 'node:stream'
+import stream from 'node:stream/promises'
 import {StreamLimiter} from '../models/StreamLimiter'
 
 const log = debug('tus-node-server:handlers:patch')
@@ -91,11 +91,13 @@ export class PatchHandler extends BaseHandler {
       upload.size = size
     }
 
+    let newOffset = 0
     const bodyMaxSize = await this.getBodyMaxSize(req, upload, maxFileSize)
-    const reqBody = stream.pipeline(req, new StreamLimiter(bodyMaxSize), () => {})
 
-    const newOffset = await this.lock(req, id, () => {
-      return this.store.write(reqBody, id, offset)
+    await stream.pipeline(req, new StreamLimiter(bodyMaxSize), async (stream) => {
+      newOffset = await this.lock(req, id, () => {
+        return this.store.write(stream as StreamLimiter, id, offset)
+      })
     })
 
     upload.offset = newOffset

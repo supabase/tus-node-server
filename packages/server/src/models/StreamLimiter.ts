@@ -1,14 +1,15 @@
 import {Transform, TransformCallback} from 'stream'
 import {ERRORS} from '../constants'
 
-class MaxFileExceededError extends Error {
+export class MaxFileExceededError extends Error {
   status_code: number
   body: string
 
-  constructor(message: string) {
-    super(message)
+  constructor() {
+    super(ERRORS.ERR_MAX_SIZE_EXCEEDED.body)
     this.status_code = ERRORS.ERR_MAX_SIZE_EXCEEDED.status_code
-    this.body = message
+    this.body = ERRORS.ERR_MAX_SIZE_EXCEEDED.body
+    Object.setPrototypeOf(this, MaxFileExceededError.prototype)
   }
 }
 
@@ -24,7 +25,7 @@ export class StreamLimiter extends Transform {
   _transform(chunk: Buffer, encoding: BufferEncoding, callback: TransformCallback): void {
     this.currentSize += chunk.length
     if (this.currentSize > this.maxSize) {
-      callback(new MaxFileExceededError(ERRORS.ERR_MAX_SIZE_EXCEEDED.body))
+      callback(new MaxFileExceededError())
     } else {
       this.push(chunk)
       callback()
