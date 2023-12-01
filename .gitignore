@@ -1,7 +1,6 @@
 .idea
 .eslintcache
-dist
-
+demo/files
 # Yarn
 .pnp.*
 .yarn/*

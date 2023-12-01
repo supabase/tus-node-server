@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@tus/server",
+  "version": "1.0.1",
+  "description": "Tus resumable upload protocol in Node.js",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "homepage": "https://github.com/tus/tus-node-server#readme",
+  "bugs": "https://github.com/tus/tus-node-server/issues",
+  "repository": "tus/tus-node-server",
+  "license": "MIT",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && cp package.json dist/package.json",
+    "lint": "eslint .",
+    "format": "eslint --fix .",
+    "test": "mocha --timeout 40000 --exit --extension ts --require ts-node/register"
+  },
+  "dependencies": {
+    "debug": "^4.3.4"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.8",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.5.7",
+    "@types/sinon": "^10.0.16",
+    "@types/supertest": "^2.0.12",
+    "eslint": "^8.48.0",
+    "eslint-config-custom": "https://gitpkg.now.sh/supabase/tus-node-server/packages/eslint-config-custom?supabase/build-v2",
+    "mocha": "^10.2.0",
+    "node-mocks-http": "^1.13.0",
+    "should": "^13.2.3",
+    "sinon": "^15.2.0",
+    "supertest": "^6.3.3",
+    "ts-node": "^10.9.1",
+    "tsconfig": "*",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

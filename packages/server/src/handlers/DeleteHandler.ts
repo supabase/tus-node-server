@@ -20,6 +20,12 @@ export class DeleteHandler extends BaseHandler {
 
     const unlock = await this.acquireLock(req, id, context)
     try {
+      const upload = await this.store.getUpload(id)
+      const isCompleted = upload.size === upload.offset
+      if (!isCompleted) {
+        throw ERRORS.TERMINATION_ERROR
+      }
+
       await this.store.remove(id)
     } finally {
       await unlock()

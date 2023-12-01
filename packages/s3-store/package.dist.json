@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@tus/s3-store",
+  "version": "1.1.1",
+  "description": "AWS S3 store for @tus/server",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "homepage": "https://github.com/tus/tus-node-server#readme",
+  "bugs": "https://github.com/tus/tus-node-server/issues",
+  "repository": "tus/tus-node-server",
+  "license": "MIT",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && cp package.json dist/package.json",
+    "lint": "eslint .",
+    "format": "eslint --fix .",
+    "test": "mocha test.ts --timeout 40000 --exit --extension ts --require ts-node/register"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.400.0",
+    "debug": "^4.3.4"
+  },
+  "devDependencies": {
+    "@tus/server": "https://gitpkg.now.sh/supabase/tus-node-server/packages/server/dist?supabase/build-v2",
+    "@types/debug": "^4.1.8",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.5.7",
+    "eslint": "^8.48.0",
+    "eslint-config-custom": "https://gitpkg.now.sh/supabase/tus-node-server/packages/eslint-config-custom?supabase/build-v2",
+    "mocha": "^10.2.0",
+    "should": "^13.2.3",
+    "typescript": "^5.2.2"
+  },
+  "peerDependencies": {
+    "@tus/server": "https://gitpkg.now.sh/supabase/tus-node-server/packages/server/dist?supabase/build-v2"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

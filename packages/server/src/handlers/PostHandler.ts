@@ -83,6 +83,11 @@ export class PostHandler extends BaseHandler {
       metadata,
     })
 
+    const maxFileSize = await this.getConfiguredMaxSize(req, id)
+    if (maxFileSize > 0 && (upload.size || 0) > maxFileSize) {
+      throw ERRORS.ERR_MAX_SIZE_EXCEEDED
+    }
+
     if (this.options.onUploadCreate) {
       try {
         res = await this.options.onUploadCreate(req, res, upload)
@@ -110,7 +115,8 @@ export class PostHandler extends BaseHandler {
 
       // The request MIGHT include a Content-Type header when using creation-with-upload extension
       if (validateHeader('content-type', req.headers['content-type'])) {
-        const newOffset = await this.writeToStore(req, id, 0, context)
+        const bodyMaxFileSize = await this.getBodyMaxSize(req, upload, maxFileSize)
+        const newOffset = await this.writeToStore(req, id, 0, bodyMaxFileSize, context)
 
         headers['Upload-Offset'] = newOffset.toString()
         isFinal = newOffset === Number.parseInt(upload_length as string, 10)

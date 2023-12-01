@@ -12,6 +12,8 @@ import {EVENTS} from '../src/constants'
 import {CancellationContext} from '../src/handlers/BaseHandler'
 import {EventEmitter} from 'node:events'
 import {addPipableStreamBody} from './utils'
+import streamP from 'node:stream/promises'
+import stream, {Readable} from 'node:stream'
 
 describe('PatchHandler', () => {
   const path = '/test/output'
@@ -180,5 +182,76 @@ describe('PatchHandler', () => {
     assert.ok(spy.args[0][0])
     assert.ok(spy.args[0][1])
     assert.equal(spy.args[0][2].offset, 10)
+  })
+
+  it('should throw max size exceeded error when upload-length is higher then the maxSize', async () => {
+    handler = new PatchHandler(store, {path, maxSize: 5})
+    req = addPipableStreamBody(
+      httpMocks.createRequest({
+        method: 'PATCH',
+        url: `${path}/1234`,
+        body: Buffer.alloc(30),
+      })
+    )
+    res = httpMocks.createResponse({req})
+    req.headers = {
+      'upload-offset': '0',
+      'upload-length': '10',
+      'content-type': 'application/offset+octet-stream',
+    }
+    req.url = `${path}/file`
+
+    store.hasExtension.withArgs('creation-defer-length').returns(true)
+    store.getUpload.resolves(new Upload({id: '1234', offset: 0}))
+    store.write.resolves(5)
+    store.declareUploadLength.resolves()
+
+    try {
+      await handler.send(req, res, context)
+      throw new Error('failed test')
+    } catch (e) {
+      assert.equal('body' in e, true)
+      assert.equal('status_code' in e, true)
+      assert.equal(e.body, 'Maximum size exceeded\n')
+      assert.equal(e.status_code, 413)
+    }
+  })
+
+  it('should throw max size exceeded error when the request body is bigger then the maxSize', async () => {
+    handler = new PatchHandler(store, {path, maxSize: 5})
+    req = addPipableStreamBody(
+      httpMocks.createRequest({
+        method: 'PATCH',
+        url: `${path}/1234`,
+        body: Buffer.alloc(30),
+      })
+    )
+    res = httpMocks.createResponse({req})
+    req.headers = {
+      'upload-offset': '0',
+      'content-type': 'application/offset+octet-stream',
+    }
+    req.url = `${path}/file`
+
+    store.getUpload.resolves(new Upload({id: '1234', offset: 0}))
+    store.write.callsFake(async (readable: http.IncomingMessage | stream.Readable) => {
+      const writeStream = new stream.Duplex()
+      await streamP.pipeline(readable, writeStream)
+      return writeStream.readableLength
+    })
+    store.declareUploadLength.resolves()
+
+    try {
+      const a = await handler.send(req, res, context)
+      console.log(a)
+      throw new Error('failed test')
+    } catch (e) {
+      console.log(e)
+      assert.equal(e.message !== 'failed test', true, 'failed test')
+      assert.equal('body' in e, true)
+      assert.equal('status_code' in e, true)
+      assert.equal(e.body, 'Maximum size exceeded\n')
+      assert.equal(e.status_code, 413)
+    }
   })
 })

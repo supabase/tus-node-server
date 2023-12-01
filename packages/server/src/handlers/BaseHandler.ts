@@ -4,7 +4,10 @@ import type {ServerOptions} from '../types'
 import type {DataStore} from '../models'
 import type http from 'node:http'
 import stream from 'node:stream'
+import streamPromise from 'node:stream/promises'
 import {ERRORS} from '../constants'
+import {Upload} from '../models'
+import {StreamLimiter} from '../models/StreamLimiter'
 
 const reExtractFileID = /([^/]+)\/?$/
 const reForwardedHost = /host="?([^";]+)/
@@ -53,8 +56,7 @@ export class BaseHandler extends EventEmitter {
       return this.options.generateUrl(req, {
         proto,
         host,
-        // @ts-expect-error we can pass undefined
-        baseUrl: req.baseUrl,
+        baseUrl: baseUrl,
         path: path,
         id,
       })
@@ -135,6 +137,7 @@ export class BaseHandler extends EventEmitter {
     req: http.IncomingMessage,
     id: string,
     offset: number,
+    maxFileSize: number,
     context: CancellationContext
   ) {
     return new Promise<number>(async (resolve, reject) => {
@@ -147,6 +150,7 @@ export class BaseHandler extends EventEmitter {
       stream.addAbortSignal(context.signal, proxy)
 
       proxy.on('error', (err) => {
+        req.unpipe(proxy)
         if (err.name === 'AbortError') {
           reject(ERRORS.ABORTED)
         } else {
@@ -160,7 +164,61 @@ export class BaseHandler extends EventEmitter {
         }
       })
 
-      this.store.write(req.pipe(proxy), id, offset).then(resolve).catch(reject)
+      streamPromise
+        .pipeline(req.pipe(proxy), new StreamLimiter(maxFileSize), async (stream) => {
+          return this.store.write(stream as StreamLimiter, id, offset)
+        })
+        .then(resolve)
+        .catch(reject)
     })
+  }
+
+  getConfiguredMaxSize(req: http.IncomingMessage, id: string) {
+    if (typeof this.options.maxSize === 'function') {
+      return this.options.maxSize(req, id)
+    }
+    return this.options.maxSize ?? 0
+  }
+
+  async getBodyMaxSize(
+    req: http.IncomingMessage,
+    info: Upload,
+    configuredMaxSize?: number
+  ) {
+    configuredMaxSize =
+      configuredMaxSize ?? (await this.getConfiguredMaxSize(req, info.id))
+
+    const length = parseInt(req.headers['content-length'] || '0', 10)
+    const offset = info.offset
+
+    // Test if this upload fits into the file's size
+    if (!info.sizeIsDeferred && offset + length > (info.size || 0)) {
+      throw ERRORS.ERR_SIZE_EXCEEDED
+    }
+
+    let maxSize = (info.size || 0) - offset
+    // If the upload's length is deferred and the PATCH request does not contain the Content-Length
+    // header (which is allowed if 'Transfer-Encoding: chunked' is used), we still need to set limits for
+    // the body size.
+    if (info.sizeIsDeferred) {
+      if (configuredMaxSize > 0) {
+        // Ensure that the upload does not exceed the maximum upload size
+        maxSize = configuredMaxSize - offset
+      } else {
+        // If no upload limit is given, we allow arbitrary sizes
+        maxSize = Number.MAX_SAFE_INTEGER
+      }
+    }
+
+    if (length > 0) {
+      maxSize = length
+    }
+
+    // limit the request body to the maxSize if provided
+    if (configuredMaxSize > 0 && maxSize > configuredMaxSize) {
+      maxSize = configuredMaxSize
+    }
+
+    return maxSize
   }
 }

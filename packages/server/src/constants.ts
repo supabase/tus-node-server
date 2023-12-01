@@ -41,6 +41,10 @@ export const ERRORS = {
     status_code: 500,
     body: 'failed to acquire lock before timeout',
   },
+  TERMINATION_ERROR: {
+    status_code: 400,
+    body: 'cannot terminate an already completed upload',
+  },
   INVALID_CONTENT_TYPE: {
     status_code: 403,
     body: 'Content-Type header required\n',
@@ -56,6 +60,14 @@ export const ERRORS = {
   FILE_NO_LONGER_EXISTS: {
     status_code: 410,
     body: 'The file for this url no longer exists\n',
+  },
+  ERR_SIZE_EXCEEDED: {
+    status_code: 413,
+    body: "upload's size exceeded\n",
+  },
+  ERR_MAX_SIZE_EXCEEDED: {
+    status_code: 413,
+    body: 'Maximum size exceeded\n',
   },
   INVALID_LENGTH: {
     status_code: 400,

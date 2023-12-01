@@ -249,12 +249,9 @@ export class Server extends EventEmitter {
     if (isAborted) {
       // @ts-expect-error not explicitly typed but possible
       headers['Connection'] = 'close'
-      res.writeHead(status, headers)
-      res.write(body)
-      const sent = res.end()
-      req.destroy()
-
-      return sent
+      res.on('finish', () => {
+        req.destroy()
+      })
     }
 
     res.writeHead(status, headers)

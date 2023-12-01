@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp package.dist.json dist/package.json",
     "lint": "eslint .",
     "format": "eslint --fix .",
     "test": "mocha test.ts --timeout 40000 --exit --extension ts --require ts-node/register"
